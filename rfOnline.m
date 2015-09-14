@@ -1,6 +1,6 @@
 
 
-function bestCoords = rfOnline(filename)
+function bestCoords = rfOnline(datFilename, nChans, Fs, mouseName, expNum)
 % Compute a receptive field map online for sparse noise stimuli. 
 % Uses an estimate of the MUA signal (raw data, high pass filtered) for a
 % subset of channels. 
@@ -8,12 +8,25 @@ function bestCoords = rfOnline(filename)
 % coordinate to use for the center. 
 
 
-% read file metadata
+% determine length of file to use
+d = dir(datFilename);
+b = dir.Bytes;
+sampsToRead = floor(b/nChans/2);
 
 
 % load Timeline
+todaysDateStr = datestr(now, 'yyyy-mm-dd');
+zserverDir = '\\zserver';
+timelineDir = fullfile(zserverDir, 'Data', 'expInfo', mouseName, todaysDateStr, num2str(expNum));
+d = dir(fullfile(timelineDir, '*Timeline.mat'));
+if ~isempty(d)
+    load(fullfile(timelineDir, d.name));
+end
 
 % load Protocol
+protocolDir = fullfile(zserverDir, 'Data', 'trodes', mouseName, todaysDateStr, num2str(expNum));
+d = dir(fullfile(protocolDir, 'Protocol.mat'));
+
 
 
 % load synch channel from dat file and detect pulses (assume that should
@@ -40,9 +53,12 @@ for ch = 1:numChansToAnalyze
     
     % compute spike-trig averages
     
+    
     % extract magnitude of responses
     
+    
     % find peak
+    
     
     % plot
     
