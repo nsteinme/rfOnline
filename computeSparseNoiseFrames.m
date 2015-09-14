@@ -19,15 +19,15 @@ for stim = 1:numel(Protocol.seqnums)
         frameTimes = zeros(1, length(photodiodeFlips)+numel(Protocol.seqnums));
     end
     
-    disp([' stim ' num2str(stim)]);
-    disp(['   first frame starts ' num2str(photodiodeFlips(pdTimeInd))]);
+%     disp([' stim ' num2str(stim)]);
+%     disp(['   first frame starts ' num2str(photodiodeFlips(pdTimeInd))]);
     for img = 1:length(ss.ImageSequence)
         allFrames(ftInd, :, :) = ss.ImageTextures{ss.ImageSequence(img)};
         frameTimes(ftInd) = photodiodeFlips(pdTimeInd);
         ftInd = ftInd+1;
         pdTimeInd = pdTimeInd+1;
     end
-    disp(['   last frame starts ' num2str(photodiodeFlips(pdTimeInd))]);
+%     disp(['   last frame starts ' num2str(photodiodeFlips(pdTimeInd))]);
     
     % now add the "turn off stimulus" event
 

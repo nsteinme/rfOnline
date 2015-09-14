@@ -81,7 +81,7 @@ flipTimes = detectPDiodeUpDown(pd, Timeline.hw.daqSampleRate, threshUp, threshDo
 % recreate stimulus traces
 myScreenInfo.windowPtr = NaN;
 [allFrames, frameTimes] = computeSparseNoiseFrames(Protocol, flipTimes, myScreenInfo);
-frameTimesDat = [frameTimes ones(size(frameTimes))]*datAlignment;
+frameTimesDat = [frameTimes' ones(size(frameTimes'))]*datAlignment;
 
 % load each dat channel to analyze
 numChansToAnalyze = length(analyzeChans);
@@ -99,6 +99,7 @@ for ch = 1:numChansToAnalyze
     end
     
     % filter for MUA, smooth, then downsample
+    newFs = 200;
     mua = datToMUA(dat, Fs, newFs);
     
     
