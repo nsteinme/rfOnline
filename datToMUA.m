@@ -1,17 +1,11 @@
 
-function mua = datToMUA(dat, Fs, newFs)
+function mua = datToMUA(dat, Fs, fact)
 
 highPassCutoff = 300; % Hz
-D = designfilt('highpassiir', 'FilterOrder', 2, 'PassbandFrequency', highPassCutoff, 'SampleRate', Fs);
 
-filtDat = filtfilt(D, dat);
+[b1, a1] = butter(7, highPassCutoff/Fs, 'high');
 
-% smooth over a window twice as wide as the new sampling frequency's period
-T = 1/newFs;
-smWin = gausswin(round(T*Fs*2))./sum(gausswin(round(T*Fs*2)));
+filtDat = abs(filtfilt(b1,a1, dat));
 
-filtDatSm = conv(filtDat, smWin, 'same');
-
-% resample at lower sampling frequency
-mua = interp1((0:length(dat)-1)/Fs, filtDatSm, (0:1/newFs:length(dat)/Fs));
-
+NT = size(filtDat,1);
+mua = permute(mean(reshape(filtDat, fact, NT/fact, []), 1), [2 3 1]);
