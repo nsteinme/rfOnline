@@ -16,6 +16,7 @@ sta = zeros(numel(dt), size(mua,2),size(allFrames,2), size(allFrames,3));
 for iy = 1:size(allFrames,2)
     for ix = 1:size(allFrames,3)
         ionset = muaframetimes(idx(:,iy, ix));
+        ionset(end) = [];
         indref = repmat(ionset, numel(dt), 1) + repmat(dt', 1, numel(ionset));
         sta(:,:, iy, ix) = mean(reshape(mua(indref, :), [size(indref) size(mua,2)]), 2);
     end
