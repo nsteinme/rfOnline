@@ -36,13 +36,14 @@ for stim = 1:numel(Protocol.seqnums)
     ftInd = ftInd+1;
     pdTimeInd = pdTimeInd+1;
 
+    missedfs = 0;
     while pdTimeInd<length(photodiodeFlips) && diff(photodiodeFlips(pdTimeInd-1:pdTimeInd)) < 1
         % whoops, there must have been a missed frame because this gap
         % should be something like 3 seconds
-        disp(['missed frame around ' num2str(photodiodeFlips(pdTimeInd))]);
+        missedfs = missedfs + 1;
         pdTimeInd = pdTimeInd-1;
     end
-    
+    fprintf('%d missed frame(s) around %2.2f \n', missedfs, photodiodeFlips(pdTimeInd));
 end
 
 allFrames = allFrames(frameTimes>0,:,:);

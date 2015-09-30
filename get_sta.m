@@ -1,13 +1,16 @@
-function resp = get_sta(mua, allFrames, frameTimes, newFs, params)
+function resp = get_sta(mua, allFrames, frameTimes, newFs, ops)
 
+params = ops.params;
+tlag = ops.tlag;
 % select time-points where a black or white square comes on
-idx = abs(diff(allFrames, 1)) > 0 & abs(allFrames(1:end-1,:,:))<1e-10; 
+idx = abs(diff(allFrames, 1)) > 1e-10 & abs(allFrames(1:end-1,:,:) - .5)<1e-10; 
 
 muaframetimes = ceil(frameTimes * newFs);
 %%
 tpre  = round(params(1) * newFs);
 tpost = round((params(2) + params(3)) * newFs);
 dt = -tpre:1:tpost;
+dt = dt + round(tlag * newFs);
 sta = zeros(numel(dt), size(mua,2),size(allFrames,2), size(allFrames,3));
 
 for iy = 1:size(allFrames,2)
