@@ -23,41 +23,7 @@ if ~flag_computed
     b = d.bytes;
     sampsToRead = floor(b/ops.nChans/2);
     
-    
-    % load Timeline
-    DateStr = ops.DateStr;
-    zserverDir = '\\zserver';
-    timelineDir = fullfile(zserverDir, 'Data', 'expInfo', ops.mouseName, DateStr, num2str(ops.expNum));
-    d = dir(fullfile(timelineDir, '*Timeline.mat'));
-    
-    if ~isempty(d)
-        disp(['loading timeline file: ' d.name])
-        load(fullfile(timelineDir, d.name));
-    else
-        disp(['could not file timeline file in ' timelineDir]);
-    end
-    timelineSync = Timeline.rawDAQData(:,strcmp({Timeline.hw.inputs.name}, 'camSync'));
-    
-    d = dir(fullfile(timelineDir, '*hardwareInfo.mat'));
-    if ~isempty(d)
-        disp(['loading hardwareInfo file: ' d.name])
-        load(fullfile(timelineDir, d.name)); % gives us "myScreenInfo"
-    else
-        disp(['could not file hardwareInfo file in ' timelineDir]);
-    end
-    
-    
-    % load Protocol
-    
-    DateStr(DateStr =='-') = [];
-    
-    protocolDir = fullfile(zserverDir, 'Data', 'trodes', ops.mouseName, DateStr, num2str(ops.expNum));
-    d = dir(fullfile(protocolDir, 'Protocol.mat'));
-    if ~isempty(d)
-        load(fullfile(protocolDir, 'Protocol.mat'));
-    else
-        disp(['could not file protocol file in ' protocolDir]);
-    end
+  
     %
     % load data
     disp(['starting to load data file: ' ops.datFilename]);
@@ -81,6 +47,12 @@ if ~flag_computed
         if ~isempty(dat)
             syncDat(iks + (1:size(dat,2))) = dat(ops.syncChannelNum, :);
             iks = iks + size(dat,2);
+            
+            if ops.applyCAR
+                % Common avg ref
+                dat = bsxfun(@minus, dat, median(dat,2)); % subtract median of each channel                
+                dat = bsxfun(@minus, dat, median(dat,1)); % subtract median of each time point
+            end
             
             dat = double(permute(mean(reshape(dat(ichn, :), [size(ichn) size(dat,2)]),1), [3 2 1]));
             dat(fsubsamp * ceil(size(dat,1)/fsubsamp),:) = 0;
@@ -112,45 +84,10 @@ if ~flag_computed
     
     disp('finished loading data');
     
-    %
+    % compute visual stimulus and timing
     
-    % synchronize TL and dat
-    disp('attempting to synchronize dat and TL')
-    datThresh = -2;
-    timelineThresh = 2;
-    datSyncSamps = find(syncDat(1:end-1)<datThresh & syncDat(2:end)>=datThresh);
-    % datSyncSamps = datSyncSamps(end-1:end); % choose the last two
-    %
-    datSyncSamps = datSyncSamps((2*ops.expNum-1) + [0 1]);
-    datSyncTimes = datSyncSamps/ops.Fs;
-    timelineSyncSamps = find(timelineSync(1:end-1)<timelineThresh & timelineSync(2:end)>=timelineThresh);
-    timelineSyncTimes = timelineSyncSamps/Timeline.hw.daqSampleRate;
-    
-    datDur = diff(datSyncTimes);
-    tlDur = diff(timelineSyncTimes);
-    if abs(datDur-tlDur)>0.03
-        disp('dat and TL do not align');
-        keyboard
-    else
-        disp(' sync successful');
-    end
-    datAlignment = regress(datSyncTimes', [timelineSyncTimes ones(size(timelineSyncTimes))]);
-    
-    % extract frame times from photodiode
-    disp('computing frame times from photodiode');
-    pd = Timeline.rawDAQData(:,strcmp({Timeline.hw.inputs.name}, 'photoDiode'));
-    threshUp = 0.2;
-    threshDown = 0.1;
-    pd(end+1) = pd(end);
-    flipTimes = detectPDiodeUpDown(pd, Timeline.hw.daqSampleRate, threshUp, threshDown);
-    
-    % recreate stimulus traces
-    disp('computing stimulus that was shown');
-    myScreenInfo.windowPtr = NaN;
-    [allFrames, frameTimes] = computeSparseNoiseFrames(Protocol, flipTimes, myScreenInfo);
-    frameTimesDat = [frameTimes' ones(size(frameTimes'))]*datAlignment;
-    
-    frameTimesDat = frameTimesDat';
+    syncT = (0:length(syncDat)-1)/ops.Fs;
+    [frameTimesDat, allFrames] = ops.frameFunc(syncT, syncDat, mouseName, thisDate, expNum);
     
     % all we need to compute RFs is in stats
     stats.frameTimesDat = frameTimesDat;
