@@ -10,9 +10,18 @@ function [bestCoords, stats] = rfOnline(ops, varargin)
 flag_computed = 0;
 if ~isempty(varargin)
     stats = varargin{1};
-    Protocol = stats.Protocol;
     flag_computed = 1;
 end
+
+if isempty(ops.syncChannelNum) && isfield(ops, 'syncDat') && isfield(ops, 'syncT')
+    fprintf(1, 'using provided sync data\n');
+    syncDat = ops.syncDat;
+    syncT = ops.syncT;
+    loadSync = false;
+else
+    loadSync = true;
+end
+
 
 if ~flag_computed
     disp('loading geometry');
@@ -35,8 +44,10 @@ if ~flag_computed
     
     ichn = chanMap(connected>0);
     ichn = sort(ichn);
-    ichn = reshape(ichn , 10, []);
-    syncDat = zeros(1, sampsToRead, 'single');
+    ichn = reshape(ichn , 11, []);
+    if loadSync
+        syncDat = zeros(1, sampsToRead, 'single');
+    end
     
     ik = 0;
     iks = 0;
@@ -45,7 +56,9 @@ if ~flag_computed
         dat = double(dat);
         
         if ~isempty(dat)
-            syncDat(iks + (1:size(dat,2))) = dat(ops.syncChannelNum, :);
+            if loadSync
+                syncDat(iks + (1:size(dat,2))) = dat(ops.syncChannelNum, :);
+            end
             iks = iks + size(dat,2);
             
             if ops.applyCAR
@@ -54,7 +67,9 @@ if ~flag_computed
                 dat = bsxfun(@minus, dat, median(dat,1)); % subtract median of each time point
             end
             
+            % take mean across adjacent N channels
             dat = double(permute(mean(reshape(dat(ichn, :), [size(ichn) size(dat,2)]),1), [3 2 1]));
+            
             dat(fsubsamp * ceil(size(dat,1)/fsubsamp),:) = 0;
             
             switch ops.response
@@ -80,21 +95,23 @@ if ~flag_computed
     fclose(fid);
     
     mua((1+ik):end, :) = [];
-    syncDat((1+iks):end) = [];
+    if loadSync
+        syncDat((1+iks):end) = [];
+        syncT = (0:length(syncDat)-1)/ops.Fs;
+    end
     
     disp('finished loading data');
     
-    % compute visual stimulus and timing
-    
-    syncT = (0:length(syncDat)-1)/ops.Fs;
-    [frameTimesDat, allFrames] = ops.frameFunc(syncT, syncDat, mouseName, thisDate, expNum);
+    % compute visual stimulus and timing    
+    [frameTimesDat, allFrames, xcenters, ycenters] = ops.frameFunc(syncT, syncDat, ops.mouseName, ops.DateStr, ops.expNum);
     
     % all we need to compute RFs is in stats
     stats.frameTimesDat = frameTimesDat;
     stats.newFs         = newFs;
     stats.allFrames     = allFrames;
     stats.mua           = mua;
-    stats.Protocol      = Protocol;
+    stats.xcenters      = xcenters;
+    stats.ycenters      = ycenters;
 end
 % compute spike-trig averages + extract magnitude of responses
 disp('computing stimulus-triggered MUA signal')
@@ -144,10 +161,7 @@ for i = 1:size(resp,3)
 end
 
 % compute best coordinates
-xcenters = linspace(Protocol.pars(2), Protocol.pars(3), size(resp,2)+1);
-xcenters = (xcenters(1:end-1) + xcenters(2:end))/2;
-ycenters = linspace(Protocol.pars(5), Protocol.pars(4), size(resp,1)+1);
-ycenters = (ycenters(1:end-1) + ycenters(2:end))/2;
+xcenters = stats.xcenters(:)'; ycenters = stats.ycenters(:)';
 bestCoords = [ycenters(pk(:,1))' xcenters(pk(:,2))'];
 
    

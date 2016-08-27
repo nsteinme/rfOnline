@@ -1,10 +1,10 @@
 
 
-function [frameTimes, allFrames] = frameFuncKT(syncT, syncDat, mouseName, thisDate, expNum)
+function [frameTimes, allFrames, xcenters, ycenters] = frameFuncKT(syncT, syncDat, mouseName, thisDate, expNum)
 
 syncFlips = schmittTimes(syncT, syncDat, [-1.75 -1.25]);
 
-[stimTimeInds, stimPositions, allFrames] = computeSparseNoiseForExp(...
+[~, stimPositions, allFrames] = computeSparseNoiseForExp(...
     mouseName, thisDate, expNum, false);
 
 allFrames = permute(allFrames, [3 1 2]);
@@ -18,9 +18,12 @@ if numel(syncFlips)==size(allFrames,1)
     fprintf(1, 'correct number of frames found\n');
 else
     fprintf(1, 'sync has %d, stim has %d\n', numel(syncFlips), size(allFrames, 1));
-    fprintf(1, 'try to fix the alignment?')
+    fprintf(1, 'try to fix the alignment?\n');
     keyboard
 end
 
-frameTimes = syncFlips(stimTimeInds);
-frameTimes = frameTimes(:);
+frameTimes = syncFlips(:);
+xcenters = unique(stimPositions{1}(:,2));
+ycenters = unique(stimPositions{1}(:,1));
+assert(numel(xcenters)==size(allFrames, 3), 'did not find correct xcenters');
+assert(numel(ycenters)==size(allFrames, 2), 'did not find correct ycenters');
