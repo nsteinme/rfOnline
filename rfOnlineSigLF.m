@@ -32,6 +32,8 @@ tic
 
 lfD = dir(fullfile(localDataDir, mouseName, thisDate, tag, '*.lf.bin'));
 lfFn = fullfile(localDataDir, mouseName, thisDate, tag, lfD.name);
+% lfD = dir(fullfile(localDataDir, mouseName, thisDate, '*.lf.bin'));
+% lfFn = fullfile(localDataDir, mouseName, thisDate, lfD.name);
 
 nChans = 385;
 
@@ -58,12 +60,13 @@ fprintf(1, 'preprocess data\n');
 % subtract channel medians because data comes offset. 
 lfDat = bsxfun(@minus, lfDat, median(lfDat,2));
 
-% extract times of syncEvents
+%% extract times of syncEvents
 ds = diff(syncDat);
 syncUp = find(ds==1);
 syncDown = find(ds==-1);
 syncEvents = sort([syncUp syncDown])/Fs;
 syncEvents = syncEvents(:); % make column
+syncEvents = [0; syncEvents]; 
 
 t = (0:size(lfDat,2)-1)/Fs;
 
@@ -223,3 +226,23 @@ cax = caxis();
 caxis([-max(abs(cax)) max(abs(cax))]);
 colormap(colormap_RedWhiteBlue)
 toc
+
+%% plot a single channel
+
+c = 40; % likely in cortex
+
+figure; 
+subplot(2,1,1);
+imagesc(yPos, xPos, squeeze(rfMaps(c,:,:)));
+hold on; plot(90,0, 'go');
+axis image; axis off
+cax = caxis();
+caxis([-max(abs(cax)) max(abs(cax))]);
+colormap(colormap_RedWhiteBlue)
+
+subplot(2,1,2);
+plot(winSamps, timeCourses(c,:));
+xlabel('time (s)')
+hold on; plot([0 0], ylim(), 'k--');
+xlim(computeWin)
+box off
