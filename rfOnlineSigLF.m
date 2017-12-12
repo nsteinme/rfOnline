@@ -3,14 +3,24 @@
 % New RF online, using signals RF mapper and LFP rather than mpep and
 % spikes... 
 
+%% paths
+addpath(genpath('C:\Users\Experiment\Documents\GitHub\spikes'))
+
 
 %% specify files, other parameters
 
-localDataDir = 'J:\';
-mouseName = 'Cori';
-thisDate = '2016-12-14';
-tag = 'V1';
-expNum = 3;
+% localDataDir = 'J:\';
+% mouseName = 'Cori';
+% thisDate = '2016-12-14';
+% tag = 'V1';
+% expNum = 3;
+
+localDataDir = 'J:\data';
+mouseName = 'Hench';
+thisDate = datestr(now, 'yyyy-mm-dd');
+tag = 'K1';
+expNum = 1;
+
 FsOrig = 2500;
 downSampFactor = 5;
 Fs = FsOrig/downSampFactor;
@@ -20,7 +30,7 @@ q = 1:384;
 inclChans = q(~ismember(q, exclChans));
 useChans = inclChans(1:8:end);
 
-inclSamps = 2.85e6:4.4e6; % this is just for my test file
+% inclSamps = 2.85e6:4.4e6; % this is just for my test file
 
 
 computeWin = [-0.05 0.2]; % window around stimulus events to compute average LFP
@@ -30,24 +40,27 @@ computeWin = [-0.05 0.2]; % window around stimulus events to compute average LFP
 fprintf(1, 'loading data\n');
 tic
 
-lfD = dir(fullfile(localDataDir, mouseName, thisDate, tag, '*.lf.bin'));
-lfFn = fullfile(localDataDir, mouseName, thisDate, tag, lfD.name);
-% lfD = dir(fullfile(localDataDir, mouseName, thisDate, '*.lf.bin'));
-% lfFn = fullfile(localDataDir, mouseName, thisDate, lfD.name);
+% lfD = dir(fullfile(localDataDir, mouseName, thisDate, tag, '*.lf.bin'));
+% lfFn = fullfile(localDataDir, mouseName, thisDate, tag, lfD.name);
+lfD = dir(fullfile(localDataDir, mouseName, thisDate, '*.lf.bin'));
+lfFn = fullfile(localDataDir, mouseName, thisDate, lfD.name);
 
 nChans = 385;
+nSampToRead = floor(lfD.bytes/2/nChans);
+
+fprintf(1, 'file appears to have %.2f sec (%.2f min) of data in it\n', nSampToRead/Fs, nSampToRead/Fs/60);
 
 fid = fopen(lfFn);
 % could improve this by skipping the channels I will drop anyway, perhaps
 % by memory mapping. would reduce memory usage, probably not increase speed
-rawData = fread(fid, [nChans Inf], '*int16');
+rawData = fread(fid, [nChans nSampToRead], '*int16');
 fclose(fid);
 
 syncDat = rawData(end,:);
 lfDat = rawData(useChans,:);
 
-syncDat = syncDat(inclSamps);
-lfDat = lfDat(:,inclSamps);
+% syncDat = syncDat(inclSamps);
+% lfDat = lfDat(:,inclSamps);
 
 syncDat = syncDat(1:downSampFactor:end);
 lfDat = lfDat(:,1:downSampFactor:end);
@@ -61,12 +74,14 @@ fprintf(1, 'preprocess data\n');
 lfDat = bsxfun(@minus, lfDat, median(lfDat,2));
 
 %% extract times of syncEvents
-ds = diff(syncDat);
-syncUp = find(ds==1);
-syncDown = find(ds==-1);
-syncEvents = sort([syncUp syncDown])/Fs;
-syncEvents = syncEvents(:); % make column
-syncEvents = [0; syncEvents]; 
+% ds = diff(syncDat);
+% syncUp = find(ds==1);
+% syncDown = find(ds==-1);
+% syncEvents = sort([syncUp syncDown])/Fs;
+% syncEvents = syncEvents(:); % make column
+% syncEvents = [0; syncEvents]; 
+eventTimes = spikeGLXdigitalParse(syncDat, Fs);
+syncEvents = [0;eventTimes{1}{1}];
 
 t = (0:size(lfDat,2)-1)/Fs;
 
@@ -175,19 +190,23 @@ timeCourses = zeros(nCh, nWS);
 
 for c = 1:nCh
     thisResp = reshape(allResp(c,:,:,:), nX*nY, nWS);
-    bsl = mean(thisResp(:,1)); % take the first bin as the baseline
+    bsl = nanmean(thisResp(:,1)); % take the first bin as the baseline
+    
     
     respNorm = thisResp-bsl;
     
+    respNorm(isnan(respNorm)) = 0;
+    
     % find the peak stimulus and time point
-    [iStim,iTimePoint] = find(abs(respNorm)==max(abs(respNorm(:))));
-
+    [iStim,iTimePoint] = find(abs(respNorm)==max(abs(respNorm(:))),1);
+    
     % take the map to be the value at that time point for every stimulus
     % position
     rfMaps(c,:,:) = reshape(respNorm(:,iTimePoint),nX, nY);
     
     % take the time course to be the time course of the best stimulus
     timeCourses(c,:) = respNorm(iStim,:);
+    
 end
 
 toc
@@ -224,21 +243,21 @@ axis off
 set(gca, 'YDir', 'normal')
 cax = caxis();
 caxis([-max(abs(cax)) max(abs(cax))]);
-colormap(colormap_RedWhiteBlue)
+% colormap(colormap_RedWhiteBlue)
 toc
 
 %% plot a single channel
 
-c = 40; % likely in cortex
+c = 29; % likely in cortex
 
 figure; 
 subplot(2,1,1);
 imagesc(yPos, xPos, squeeze(rfMaps(c,:,:)));
 hold on; plot(90,0, 'go');
-axis image; axis off
+axis image; %axis off
 cax = caxis();
 caxis([-max(abs(cax)) max(abs(cax))]);
-colormap(colormap_RedWhiteBlue)
+% colormap(colormap_RedWhiteBlue)
 
 subplot(2,1,2);
 plot(winSamps, timeCourses(c,:));
