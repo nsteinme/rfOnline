@@ -5,21 +5,27 @@
 
 %% paths
 addpath(genpath('C:\Users\Experiment\Documents\GitHub\spikes'))
+addpath(genpath('C:\Users\Experiment\Documents\GitHub\Rigbox'))
 
 
 %% specify files, other parameters
 
-% localDataDir = 'J:\';
-% mouseName = 'Cori';
-% thisDate = '2016-12-14';
-% tag = 'V1';
-% expNum = 3;
-
+% 
+% localDataDir = 'F:\data';
+% mouseName = 'SS093';
+% thisDate = datestr(now, 'yyyy-mm-dd');
+% tag = 'K1';
+% expNum = 1;
+% localDataDir = 'G:\data';
+% mouseName = 'SS093';
+% thisDate = datestr(now, 'yyyy-mm-dd');
+% tag = 'K2';
+% expNum = 1;
 localDataDir = 'J:\data';
-mouseName = 'Hench';
+mouseName = 'SS095';
 thisDate = datestr(now, 'yyyy-mm-dd');
 tag = 'K1';
-expNum = 1;
+expNum = 4;
 
 FsOrig = 2500;
 downSampFactor = 5;
@@ -42,13 +48,13 @@ tic
 
 % lfD = dir(fullfile(localDataDir, mouseName, thisDate, tag, '*.lf.bin'));
 % lfFn = fullfile(localDataDir, mouseName, thisDate, tag, lfD.name);
-lfD = dir(fullfile(localDataDir, mouseName, thisDate, '*.lf.bin'));
+lfD = dir(fullfile(localDataDir, mouseName, thisDate, '*g1*.lf.bin'));
 lfFn = fullfile(localDataDir, mouseName, thisDate, lfD.name);
 
 nChans = 385;
 nSampToRead = floor(lfD.bytes/2/nChans);
 
-fprintf(1, 'file appears to have %.2f sec (%.2f min) of data in it\n', nSampToRead/Fs, nSampToRead/Fs/60);
+fprintf(1, 'file appears to have %.2f sec (%.2f min) of data in it\n', nSampToRead/FsOrig, nSampToRead/FsOrig/60);
 
 fid = fopen(lfFn);
 % could improve this by skipping the channels I will drop anyway, perhaps
@@ -81,7 +87,7 @@ lfDat = bsxfun(@minus, lfDat, median(lfDat,2));
 % syncEvents = syncEvents(:); % make column
 % syncEvents = [0; syncEvents]; 
 eventTimes = spikeGLXdigitalParse(syncDat, Fs);
-syncEvents = [0;eventTimes{1}{1}];
+syncEvents = [0;eventTimes{2}{1}];
 
 t = (0:size(lfDat,2)-1)/Fs;
 
@@ -116,7 +122,7 @@ match = false;
 while ~match && startInd+numel(sw)-1<=numel(syncEvents)
     theseSE = syncEvents(startInd:startInd+numel(sw)-1);
     
-    match = sum((diff(sw)-diff(theseSE))>0.02)<10; % the diffs have to be within one frame (20ms) but allow a few to be off for random reasons
+    match = sum((diff(sw)-diff(theseSE))>0.01)<10; % the diffs have to be within one frame (20ms) but allow a few to be off for random reasons
     startInd = startInd+1;
 end
 
@@ -218,7 +224,8 @@ for c = 1:nCh
     cPlotInd = nCh-c+1;
     subtightplot(nCh, 2, (cPlotInd-1)*2+1, 0.001, 0.001, 0.001);
     imagesc(yPos, xPos, squeeze(rfMaps(c,:,:)));
-    hold on; plot(90,0, 'go');
+    hold on; plot(90,0, 'ro');
+    hold on; plot(-90,0, 'ro');
     axis image; axis off
     cax = caxis();
     caxis([-max(abs(cax)) max(abs(cax))]);
@@ -248,7 +255,7 @@ toc
 
 %% plot a single channel
 
-c = 29; % likely in cortex
+c = 33; % likely in cortex
 
 figure; 
 subplot(2,1,1);
